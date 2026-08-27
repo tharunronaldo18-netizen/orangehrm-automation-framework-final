@@ -11,9 +11,18 @@ export class AddEmployeePage extends BasePage {
     .locator('.oxd-form-row')
     .filter({ hasText: 'Create Login Details' })
     .locator('.oxd-switch-input');
-  private readonly usernameInput = this.page.getByPlaceholder('Username');
-  private readonly passwordInput = this.page.locator('input[type="password"]').first();
-  private readonly confirmPasswordInput = this.page.locator('input[type="password"]').nth(1);
+  private readonly usernameInput = this.page
+    .locator('.oxd-input-group')
+    .filter({ has: this.page.locator('label', { hasText: /^Username$/ }) })
+    .locator('input');
+  private readonly passwordInput = this.page
+    .locator('.oxd-input-group')
+    .filter({ has: this.page.locator('label', { hasText: /^Password$/ }) })
+    .locator('input');
+  private readonly confirmPasswordInput = this.page
+    .locator('.oxd-input-group')
+    .filter({ has: this.page.locator('label', { hasText: /^Confirm Password$/ }) })
+    .locator('input');
   private readonly saveButton = this.page.getByRole('button', { name: 'Save' });
 
   constructor(page: Page) {
