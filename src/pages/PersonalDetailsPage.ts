@@ -3,7 +3,10 @@ import { BasePage } from './BasePage';
 import { EmployeeUpdate } from '../types/Employee';
 
 export class PersonalDetailsPage extends BasePage {
-  private readonly driverLicenseInput = this.page.getByPlaceholder(/Driver's License/);
+  private readonly driverLicenseInput = this.page
+    .locator('.oxd-input-group')
+    .filter({ hasText: /Driver's License Number/ })
+    .locator('input');
   private readonly nationalityDropdown = this.page.locator('.oxd-input-group').filter({ hasText: 'Nationality' }).locator('.oxd-select-text');
   private readonly maritalStatusDropdown = this.page.locator('.oxd-input-group').filter({ hasText: 'Marital Status' }).locator('.oxd-select-text');
   private readonly saveButton = this.page.getByRole('button', { name: 'Save' });
