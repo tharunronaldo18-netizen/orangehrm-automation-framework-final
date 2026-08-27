@@ -1,0 +1,26 @@
+{
+  "name": "orangehrm-automation-framework",
+  "version": "1.0.0",
+  "description": "End-to-end + API automation framework for OrangeHRM employee lifecycle",
+  "scripts": {
+    "test": "playwright test",
+    "test:e2e": "playwright test tests/e2e",
+    "test:api": "playwright test tests/api",
+    "test:smoke": "playwright test --grep @smoke",
+    "test:regression": "playwright test --grep @regression",
+    "test:shard1": "playwright test --shard=1/3",
+    "test:shard2": "playwright test --shard=2/3",
+    "test:shard3": "playwright test --shard=3/3",
+    "report": "playwright show-report",
+    "merge-reports": "playwright merge-reports --reporter html ./blob-reports",
+    "k6:login": "k6 run k6/login-load-test.js",
+    "k6:employee": "k6 run k6/employee-creation-load-test.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.47.0",
+    "@types/node": "^20.14.0",
+    "dotenv": "^16.4.5",
+    "typescript": "^5.5.0"
+  }
+}

@@ -1,0 +1,126 @@
+name: OrangeHRM Automation CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'qa'
+        type: choice
+        options: [qa, staging, prod]
+
+env:
+  TEST_ENV: ${{ github.event.inputs.environment || 'qa' }}
+  ADMIN_USERNAME: ${{ secrets.ADMIN_USERNAME }}
+  ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+
+jobs:
+  test:
+    name: E2E Tests (Shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shardIndex: [1, 2, 3]
+        shardTotal: [3]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run tests (shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
+        run: npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+
+      - name: Upload blob report (for merging)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: blob-report-${{ matrix.shardIndex }}
+          path: blob-report
+          retention-days: 7
+
+      - name: Upload test artifacts (screenshots/videos/traces)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-artifacts-${{ matrix.shardIndex }}
+          path: test-results
+          retention-days: 14
+
+  merge-reports:
+    name: Merge HTML Report
+    if: always()
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - run: npm install
+
+      - name: Download all blob reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: blob-report-*
+          path: all-blob-reports
+          merge-multiple: true
+
+      - name: Merge into single HTML report
+        run: npx playwright merge-reports --reporter html ./all-blob-reports
+
+      - name: Publish merged HTML report
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-html-report
+          path: playwright-report
+          retention-days: 30
+
+  performance:
+    name: k6 Performance Tests
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Run k6 login load test
+        env:
+          BASE_URL: ${{ vars.BASE_URL }}
+        run: k6 run k6/login-load-test.js
+
+      - name: Run k6 employee creation load test
+        env:
+          BASE_URL: ${{ vars.BASE_URL }}
+        run: k6 run k6/employee-creation-load-test.js
+
+      - name: Upload k6 reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-performance-reports
+          path: k6-results
+          retention-days: 30
